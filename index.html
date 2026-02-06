@@ -4,109 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>COMPARATORE COMMISSIONI</title>
-    
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Comparatore">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1053/1053011.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1053/1053011.png">
-
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-50">
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
 
         function App() {
             const [schermata, setSchermata] = useState('home');
             const [nomeAttivita, setNomeAttivita] = useState('');
+            const [titolare, setTitolare] = useState('');
+            const [email, setEmail] = useState('');
+            const [nPos, setNPos] = useState('1');
+            const [nPunti, setNPunti] = useState('1');
             const [transatoAnnuo, setTransatoAnnuo] = useState('100000');
-            const [importoCanoneAttuale, setImportoCanoneAttuale] = useState('0');
-            const [importoCanoneWorldline, setImportoCanoneWorldline] = useState('0');
             const [sapSetup, setSapSetup] = useState('0');
-            const [commAttuale, setCommAttuale] = useState({ pb: '0.7', vd: '1.2', vc: '1.5', md: '1.2', mc: '1.5', ma: '1.2', vp: '1.2' });
-            const [commWorldline, setCommWorldline] = useState({ pb: '0.4', vd: '0.9', vc: '0.9', md: '0.9', mc: '0.9', ma: '0.9', vp: '0.9' });
+            const [canoneAtt, setCanoneAtt] = useState('0');
+            const [canoneWL, setCanoneWL] = useState('0');
+            
+            const [commAttuale, setCommAttuale] = useState({ pb: '0.70', vd: '1.20', vc: '1.40', md: '1.20', mc: '1.40', ma: '1.20', vp: '1.20' });
+            const [commWL, setCommWL] = useState({ pb: '0.40', vd: '0.90', vc: '0.90', md: '0.90', mc: '0.90', ma: '0.90', vp: '0.90' });
             const [archivio, setArchivio] = useState([]);
 
             useEffect(() => {
-                const dati = localStorage.getItem('comparatore_v5');
+                const dati = localStorage.getItem('wl_comparatore_final');
                 if (dati) setArchivio(JSON.parse(dati));
             }, []);
 
             const calcoli = useMemo(() => {
                 const T = parseFloat(transatoAnnuo) || 0;
-                const mediaAtt = Object.values(commAttuale).reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 7;
-                const mediaW = (parseFloat(commWorldline.pb) + parseFloat(commWorldline.vd)) / 2;
-                const canAtt = (parseFloat(importoCanoneAttuale) || 0) * 12;
-                const canW = (parseFloat(importoCanoneWorldline) || 0) * 12;
-                const totAttuale = ((T * mediaAtt) / 100) + canAtt;
-                const totW = ((T * mediaW) / 100) + canW;
-                const risparmio = totAttuale - totW;
-                const risparmio1 = risparmio - (parseFloat(sapSetup) || 0);
-                const perc = totAttuale > 0 ? (risparmio / totAttuale) * 100 : 0;
-                return { risparmio, risparmio1, perc };
-            }, [transatoAnnuo, commAttuale, commWorldline, importoCanoneAttuale, importoCanoneWorldline, sapSetup]);
+                const mAtt = Object.values(commAttuale).reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 7;
+                const mWL = (parseFloat(commWL.pb) + parseFloat(commWL.vd)) / 2;
+                const totAtt = ((T * mAtt) / 100) + (parseFloat(canoneAtt) * 12);
+                const totWL = ((T * mWL) / 100) + (parseFloat(canoneWL) * 12);
+                const rRegime = totAtt - totWL;
+                return { rRegime, rAnno1: rRegime - parseFloat(sapSetup), perc: totAtt > 0 ? (rRegime/totAtt)*100 : 0 };
+            }, [transatoAnnuo, commAttuale, commWL, canoneAtt, canoneWL, sapSetup]);
 
             const salva = () => {
-                if(!nomeAttivita) return alert("Inserisci nome attività");
-                const entry = { id: Date.now(), nome: nomeAttivita, risparmio: calcoli.risparmio, perc: calcoli.perc, data: new Date().toLocaleDateString() };
+                const entry = { id: Date.now(), nome: nomeAttivita, r: calcoli.rRegime, p: calcoli.perc, data: new Date().toLocaleDateString() };
                 const nuovo = [entry, ...archivio];
                 setArchivio(nuovo);
-                localStorage.setItem('comparatore_v5', JSON.stringify(nuovo));
-                alert("Salvato!");
+                localStorage.setItem('wl_comparatore_final', JSON.stringify(nuovo));
                 setSchermata('home');
             };
 
+            const Input = ({label, value, onChange, type="text", p=""}) => (
+                <div className="mb-3">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">{label}</label>
+                    <input type={type} className="w-full bg-white border border-slate-200 p-2 rounded-lg outline-none focus:border-green-500 text-slate-700" value={value} onChange={e=>onChange(e.target.value)} placeholder={p} />
+                </div>
+            );
+
             return (
                 <div className="min-h-screen pb-10">
-                    <div className="bg-gradient-to-r from-green-400 to-green-600 p-6 text-white text-center shadow-lg rounded-b-2xl">
-                        <h1 className="text-xl font-bold tracking-widest">COMPARATORE COMMISSIONI</h1>
-                        <p className="text-xs opacity-80">MARCO SARDELLI - WORLDLINE AGENT</p>
+                    <div className="bg-gradient-to-br from-green-500 to-green-700 p-6 text-white shadow-xl rounded-b-[30px] mb-4">
+                        <h1 className="text-xl font-black tracking-tighter text-center">COMPARATORE COMMISSIONI</h1>
+                        <p className="text-[10px] text-center opacity-80 font-bold uppercase tracking-widest">Marco Sardelli • Consulente Worldline</p>
                     </div>
 
-                    <div className="max-w-md mx-auto p-4">
+                    <div className="max-w-xl mx-auto px-4">
                         {schermata === 'home' ? (
-                            <div className="mt-4">
-                                <button onClick={() => { setNomeAttivita(''); setSchermata('calcolo'); }} className="w-full bg-white border-2 border-green-500 text-green-600 p-4 rounded-xl font-bold shadow-sm mb-6">➕ NUOVA ANALISI</button>
-                                <h3 className="text-gray-600 font-bold mb-3">Ultime Analisi:</h3>
+                            <div>
+                                <button onClick={() => setSchermata('calcolo')} className="w-full bg-white border-2 border-green-500 text-green-600 p-4 rounded-2xl font-black shadow-sm mb-6 active:scale-95 transition-all">➕ NUOVA ANALISI CLIENTE</button>
+                                <h3 className="text-slate-500 font-bold text-sm mb-3 ml-1 uppercase">Archivio Recenti</h3>
                                 {archivio.map(e => (
-                                    <div key={e.id} className="bg-white p-4 rounded-lg shadow-sm mb-3 border-l-4 border-green-500 flex justify-between items-center">
-                                        <div><p className="font-bold text-gray-800">{e.nome}</p><p className="text-xs text-gray-400">{e.data}</p></div>
-                                        <div className="text-right"><p className="text-green-600 font-bold">€ {e.risparmio.toFixed(2)}</p><p className="text-xs text-gray-400">-{e.perc.toFixed(1)}%</p></div>
+                                    <div key={e.id} className="bg-white p-4 rounded-2xl shadow-sm mb-3 border-l-[6px] border-green-500 flex justify-between items-center">
+                                        <div><p className="font-black text-slate-800 uppercase text-sm">{e.nome}</p><p className="text-[10px] text-slate-400">{e.data}</p></div>
+                                        <div className="text-right"><p className="text-green-600 font-black">€ {e.r.toFixed(2)}</p><p className="text-[10px] font-bold text-slate-400">-{e.p.toFixed(1)}%</p></div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="mt-2">
-                                <button onClick={() => setSchermata('home')} className="text-green-600 font-bold mb-4 text-sm inline-block">← TORNA ALLA HOME</button>
+                            <div className="space-y-4">
+                                <button onClick={() => setSchermata('home')} className="text-green-600 font-bold text-xs uppercase mb-2 flex items-center">← Torna alla lista</button>
                                 
-                                <div className="bg-white p-5 rounded-xl shadow-sm mb-4">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Nome Attività</label>
-                                    <input className="w-full border-b-2 border-gray-100 p-2 mb-4 outline-none focus:border-green-500" value={nomeAttivita} onChange={e=>setNomeAttivita(e.target.value)} />
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Transato Annuo (€)</label>
-                                    <input type="number" className="w-full text-2xl font-bold text-gray-800 outline-none" value={transatoAnnuo} onChange={e=>setTransatoAnnuo(e.target.value)} />
-                                </div>
-
-                                <div className="bg-green-50 border-2 border-green-500 p-6 rounded-2xl text-center shadow-md mb-6">
-                                    <p className="text-[10px] font-bold text-green-700 uppercase">Risparmio Annuo a Regime</p>
-                                    <h2 className="text-4xl font-black text-green-600">€ {calcoli.risparmio.toFixed(2)}</h2>
-                                    <p className="text-lg font-bold text-green-700 mt-1">Abbattimento costi: {calcoli.perc.toFixed(1)}%</p>
-                                    <button onClick={salva} className="w-full bg-green-500 text-white font-bold p-3 rounded-lg mt-4 shadow-lg">SALVA NELL'ARCHIVIO</button>
-                                </div>
-
-                                <div className="bg-white p-5 rounded-xl shadow-sm">
-                                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-4 text-center">Configurazione Costi</h4>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Canone Att.</p><input type="number" className="w-full text-center border rounded p-1" value={importoCanoneAttuale} onChange={e=>setImportoCanoneAttuale(e.target.value)} /></div>
-                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Canone WL</p><input type="number" className="w-full text-center border rounded p-1" value={importoCanoneWorldline} onChange={e=>setImportoCanoneWorldline(e.target.value)} /></div>
-                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Setup/SAP</p><input type="number" className="w-full text-center border rounded p-1" value={sapSetup} onChange={e=>setSapSetup(e.target.value)} /></div>
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                                    <h2 className="text-slate-800 font-black mb-4 uppercase text-xs border-b pb-2">Anagrafica & Transato</h2>
+                                    <Input label="Ragione Sociale / Attività" value={nomeAttivita} onChange={setNomeAttivita} p="Es. Bar Roma" />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input label="N. Punti Vendita" value={nPunti} onChange={setNPunti} type="number" />
+                                        <Input label="N. POS Totali" value={nPos} onChange={setNPos} type="number" />
                                     </div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Transato Annuo Complessivo (€)</label>
+                                    <input type="number" className="w-full text-3xl font-black text-green-600 outline-none bg-transparent" value={transatoAnnuo} onChange={e=>setTransatoAnnuo(e.target.value)} />
+                                </div>
+
+                                <div className="bg-green-600 p-6 rounded-[32px] text-white shadow-lg text-center transform scale-105 my-6">
+                                    <p className="text-[10px] font-bold uppercase opacity-80">Risparmio Annuo a Regime</p>
+                                    <h2 className="text-5xl font-black my-1">€ {calcoli.rRegime.toFixed(2)}</h2>
+                                    <div className="bg-white/20 rounded-full py-1 px-4 inline-block mt-2">
+                                        <p className="text-sm font-bold">Riduzione costi: {calcoli.perc.toFixed(1)}%</p>
+                                    </div>
+                                    <button onClick={salva} className="w-full bg-white text-green-700 font-black p-4 rounded-2xl mt-6 shadow-xl active:scale-95 transition-all uppercase tracking-tighter">💾 Salva in Archivio</button>
+                                </div>
+
+                                <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                                    <h2 className="text-slate-800 font-black mb-4 uppercase text-xs border-b pb-2 text-center text-red-500">Confronto Commissioni %</h2>
+                                    <div className="grid grid-cols-3 gap-2 mb-2 text-[9px] font-bold text-slate-400 uppercase text-center">
+                                        <div className="text-left">Circuito</div><div>Attuale</div><div>Worldline</div>
+                                    </div>
+                                    {Object.keys(commAttuale).map(k => (
+                                        <div key={k} className="grid grid-cols-3 gap-2 mb-2 items-center">
+                                            <span className="text-[11px] font-bold text-slate-600 uppercase">{k === 'pb' ? 'Bancomat' : k.toUpperCase()}</span>
+                                            <input type="number" step="0.01" className="text-center bg-slate-50 border rounded-md p-1 text-xs" value={commAttuale[k]} onChange={e=>setCommAttuale({...commAttuale, [k]: e.target.value})} />
+                                            <input type="number" step="0.01" className="text-center bg-green-50 border border-green-200 rounded-md p-1 text-xs font-bold text-green-700" value={commWL[k]} onChange={e=>setCommWL({...commWL, [k]: e.target.value})} />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
