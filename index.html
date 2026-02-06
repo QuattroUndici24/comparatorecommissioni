@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>COMPARATORE COMMISSIONI</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Comparatore">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1053/1053011.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/1053/1053011.png">
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+
+        function App() {
+            const [schermata, setSchermata] = useState('home');
+            const [nomeAttivita, setNomeAttivita] = useState('');
+            const [transatoAnnuo, setTransatoAnnuo] = useState('100000');
+            const [importoCanoneAttuale, setImportoCanoneAttuale] = useState('0');
+            const [importoCanoneWorldline, setImportoCanoneWorldline] = useState('0');
+            const [sapSetup, setSapSetup] = useState('0');
+            const [commAttuale, setCommAttuale] = useState({ pb: '0.7', vd: '1.2', vc: '1.5', md: '1.2', mc: '1.5', ma: '1.2', vp: '1.2' });
+            const [commWorldline, setCommWorldline] = useState({ pb: '0.4', vd: '0.9', vc: '0.9', md: '0.9', mc: '0.9', ma: '0.9', vp: '0.9' });
+            const [archivio, setArchivio] = useState([]);
+
+            useEffect(() => {
+                const dati = localStorage.getItem('comparatore_v5');
+                if (dati) setArchivio(JSON.parse(dati));
+            }, []);
+
+            const calcoli = useMemo(() => {
+                const T = parseFloat(transatoAnnuo) || 0;
+                const mediaAtt = Object.values(commAttuale).reduce((a, b) => parseFloat(a) + parseFloat(b), 0) / 7;
+                const mediaW = (parseFloat(commWorldline.pb) + parseFloat(commWorldline.vd)) / 2;
+                const canAtt = (parseFloat(importoCanoneAttuale) || 0) * 12;
+                const canW = (parseFloat(importoCanoneWorldline) || 0) * 12;
+                const totAttuale = ((T * mediaAtt) / 100) + canAtt;
+                const totW = ((T * mediaW) / 100) + canW;
+                const risparmio = totAttuale - totW;
+                const risparmio1 = risparmio - (parseFloat(sapSetup) || 0);
+                const perc = totAttuale > 0 ? (risparmio / totAttuale) * 100 : 0;
+                return { risparmio, risparmio1, perc };
+            }, [transatoAnnuo, commAttuale, commWorldline, importoCanoneAttuale, importoCanoneWorldline, sapSetup]);
+
+            const salva = () => {
+                if(!nomeAttivita) return alert("Inserisci nome attività");
+                const entry = { id: Date.now(), nome: nomeAttivita, risparmio: calcoli.risparmio, perc: calcoli.perc, data: new Date().toLocaleDateString() };
+                const nuovo = [entry, ...archivio];
+                setArchivio(nuovo);
+                localStorage.setItem('comparatore_v5', JSON.stringify(nuovo));
+                alert("Salvato!");
+                setSchermata('home');
+            };
+
+            return (
+                <div className="min-h-screen pb-10">
+                    <div className="bg-gradient-to-r from-green-400 to-green-600 p-6 text-white text-center shadow-lg rounded-b-2xl">
+                        <h1 className="text-xl font-bold tracking-widest">COMPARATORE COMMISSIONI</h1>
+                        <p className="text-xs opacity-80">MARCO SARDELLI - WORLDLINE AGENT</p>
+                    </div>
+
+                    <div className="max-w-md mx-auto p-4">
+                        {schermata === 'home' ? (
+                            <div className="mt-4">
+                                <button onClick={() => { setNomeAttivita(''); setSchermata('calcolo'); }} className="w-full bg-white border-2 border-green-500 text-green-600 p-4 rounded-xl font-bold shadow-sm mb-6">➕ NUOVA ANALISI</button>
+                                <h3 className="text-gray-600 font-bold mb-3">Ultime Analisi:</h3>
+                                {archivio.map(e => (
+                                    <div key={e.id} className="bg-white p-4 rounded-lg shadow-sm mb-3 border-l-4 border-green-500 flex justify-between items-center">
+                                        <div><p className="font-bold text-gray-800">{e.nome}</p><p className="text-xs text-gray-400">{e.data}</p></div>
+                                        <div className="text-right"><p className="text-green-600 font-bold">€ {e.risparmio.toFixed(2)}</p><p className="text-xs text-gray-400">-{e.perc.toFixed(1)}%</p></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="mt-2">
+                                <button onClick={() => setSchermata('home')} className="text-green-600 font-bold mb-4 text-sm inline-block">← TORNA ALLA HOME</button>
+                                
+                                <div className="bg-white p-5 rounded-xl shadow-sm mb-4">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Nome Attività</label>
+                                    <input className="w-full border-b-2 border-gray-100 p-2 mb-4 outline-none focus:border-green-500" value={nomeAttivita} onChange={e=>setNomeAttivita(e.target.value)} />
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase">Transato Annuo (€)</label>
+                                    <input type="number" className="w-full text-2xl font-bold text-gray-800 outline-none" value={transatoAnnuo} onChange={e=>setTransatoAnnuo(e.target.value)} />
+                                </div>
+
+                                <div className="bg-green-50 border-2 border-green-500 p-6 rounded-2xl text-center shadow-md mb-6">
+                                    <p className="text-[10px] font-bold text-green-700 uppercase">Risparmio Annuo a Regime</p>
+                                    <h2 className="text-4xl font-black text-green-600">€ {calcoli.risparmio.toFixed(2)}</h2>
+                                    <p className="text-lg font-bold text-green-700 mt-1">Abbattimento costi: {calcoli.perc.toFixed(1)}%</p>
+                                    <button onClick={salva} className="w-full bg-green-500 text-white font-bold p-3 rounded-lg mt-4 shadow-lg">SALVA NELL'ARCHIVIO</button>
+                                </div>
+
+                                <div className="bg-white p-5 rounded-xl shadow-sm">
+                                    <h4 className="text-xs font-bold text-gray-400 uppercase mb-4 text-center">Configurazione Costi</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Canone Att.</p><input type="number" className="w-full text-center border rounded p-1" value={importoCanoneAttuale} onChange={e=>setImportoCanoneAttuale(e.target.value)} /></div>
+                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Canone WL</p><input type="number" className="w-full text-center border rounded p-1" value={importoCanoneWorldline} onChange={e=>setImportoCanoneWorldline(e.target.value)} /></div>
+                                        <div className="text-center"><p className="text-[9px] text-gray-400 uppercase">Setup/SAP</p><input type="number" className="w-full text-center border rounded p-1" value={sapSetup} onChange={e=>setSapSetup(e.target.value)} /></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
